@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style id="estilo">
+        body {
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas {
+            border: 1px solid black;
+        }
+
+        #blanca {
+            display: none;
+            width: 50px;
+        }
+
+        .perdido {
+            display: none;
+            text-align: center;
+        }
+
+        p {
+            font-size: 30px;
+            text-align: center;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', cargaEventos);
+
+        function cargaEventos() {
+            var canvas = document.querySelector('canvas');
+            var context = canvas.getContext('2d');
+            context.font = '22px Times New Roman';
+            var img = document.getElementById('blanca');
+            var perdido = document.querySelector('.perdido');
+            var juego = true;
+            var estilo = document.getElementById('estilo');
+            var tubos = [];
+            var score = 0;
+            var highscore = 0;
+            if (document.cookie.length > 0) {
+                highscore = recuperarMejorPuntuacion();
+            }
+            var puntuacion = document.querySelector('.score');
+            var mejpuntuacion = document.querySelector('.highscore');
+           
+            var tamañoSuelo = 100;
+
+
+
+            class Pajaro {
+                constructor() {
+                    this.x = 30;
+                    this.y = canvas.height / 2;
+                    this.height = 40;
+                    this.width = 40;
+                    this.vel = 0;
+                    this.puntua = true;
+                }
+                draw() {
+                    context.beginPath();
+                    context.rect(this.x, this.y, this.width, this.height);
+                    //context.drawImage(img, this.x, this.y);
+                    context.stroke();
+                }
+
+
+                update() {
+                    this.y = this.y - this.vel;
+                    this.vel = this.vel - 0.4;
+                }
+            }
+
+            class Suelo {
+                constructor() {
+                    this.x = 0;
+                    this.width = canvas.width;
+                    this.height = tamañoSuelo;
+                    this.y = canvas.height - this.height;
+                }
+
+                draw() {
+                    context.beginPath();
+                    context.rect(this.x, this.y, this.width, this.height);
+                    context.stroke();
+                }
+            }
+
+
+            class Tubo {
+                constructor() {
+                    this.x = canvas.width - tamañoSuelo;
+                    this.y = 0;
+                    this.width = 50;
+                    this.hueco = 150;
+                    this.height = canvas.height - tamañoSuelo;
+                    this.alturaRandom = Math.random() * 200 + 100 + this.hueco;
+                }
+
+                draw() {
+                    context.beginPath();
+                    context.rect(this.x, this.y, this.width, this.height - this.alturaRandom);
+                    context.rect(this.x, this.height - this.alturaRandom + this.hueco, this.width, this.height - (this.height - this.alturaRandom) - this.hueco);
+                    //context.rect(this.x, canvas.height - tamañoSuelo - tamañoSuelo, this.width, this.height + this.hueco);
+                    context.stroke();
+                }
+
+                update() {
+                    this.x = this.x - 2.5;
+                }
+            }
+
+
+            function animate() {
+                if (juego) {
+                    requestAnimationFrame(animate);
+
+                } else {
+                    puntuacion.innerHTML = 'Puntuacion: '+score;
+                    mejpuntuacion.innerHTML =  'Mejor puntuacion: ' + highscore;
+                }
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.fillText('Puntuacion: ' + score, 20, 30);
+                context.fillText('Mejor puntuacion: ' + highscore, 20, 60);
+                pajaro.update();
+                pajaro.draw();
+                suelo.draw();
+
+                if ((pajaro.x + pajaro.width / 2) > tubos[0].x + tubos[0].width / 2 && pajaro.puntua == true) {
+                    score = score + 1;
+                    pajaro.puntua = false;
+                }
+
+                for (tubo in tubos) {
+                    tubos[tubo].update();
+                    tubos[tubo].draw();
+
+                    if (tubos[tubo].x + tubos[tubo].width < 0) {
+                        tubos.shift();
+                        pajaro.puntua = true;
+                    }
+                }
+
+                if (tubos[tubos.length - 1].x + tubos[tubos.length - 1].width < canvas.width / 2) {
+                    tubos.push(new Tubo);
+                }
+
+                if (pajaro.y + pajaro.height >= canvas.height - tamañoSuelo) {
+                    pajaro.y = canvas.height - tamañoSuelo - pajaro.height;
+                    pajaro.vel = 0;
+                }
+
+                if (compruebaPajaroTubos()) {
+                    if (score > highscore) {
+                        guardarMejorPuntuacion(score);
+                        mejpuntuacion.innerHTML = 'Mejor puntuacion: ' + score;
+                    }
+                    perdido.style.display = 'block';
+                    estilo.sheet.insertRule('canvas { display: none}');
+                    juego = false;
+                }
+
+            }
+
+            function compruebaPajaroTubos() {
+                var bandera = false;
+                if (((pajaro.x + pajaro.width > tubos[0].x && pajaro.x < tubos[0].x + tubos[0].width)) && (pajaro.y < tubos[0].height - tubos[0].alturaRandom || pajaro.y + pajaro.height > tubos[0].height - tubos[0].alturaRandom + tubos[0].hueco)) {
+                    bandera = true;
+                }
+                return bandera;
+            }
+
+            function recuperarMejorPuntuacion() {
+
+                var cookie = document.cookie;
+                var splittedCookie = cookie.split(';');
+                var mejPuntuacion = splittedCookie[0].split('=')[1];
+                return mejPuntuacion;
+
+            }
+
+            function guardarMejorPuntuacion(mejPuntu) {
+                if (document.cookie.length > 0) {
+                    document.cookie = "mejPuntu=;expires=" + new Date(0) + ";";
+                }
+                var ahora = new Date();
+                var unaHora = 1000 * 60 * 60;
+                var horaAdelante = new Date(ahora.getTime() + unaHora).toUTCString();
+                document.cookie = "mejPuntu=" + mejPuntu + ";expires=" + horaAdelante + ";";
+            }
+
+
+            function tecla(e) {
+                if (e.charCode == 32) {
+                    pajaro.vel = 7;
+                }
+            }
+            var suelo = new Suelo();
+            var pajaro = new Pajaro();
+            var primertubo = new Tubo();
+            tubos.push(primertubo);
+            document.addEventListener('keypress', tecla);
+
+
+
+            animate();
+
+        }
+    </script>
+</head>
+
+<body>
+    <img id="blanca" src="caritaBlanca.png" alt="">
+    <canvas width="800px" height="600px">
+    </canvas>
+    <div class="perdido">
+        <h1>Has perdido</h1>
+        <p class='score'></p>
+        <p class='highscore'></p>
+    </div>
+</body>
+
+</html>
